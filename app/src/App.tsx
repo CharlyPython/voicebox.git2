@@ -19,6 +19,7 @@ import {
   isLoopbackVoiceboxServerUrl,
   useServerStore,
 } from '@/stores/serverStore';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 function isDictateView(): boolean {
   if (typeof window === 'undefined') return false;
@@ -302,7 +303,14 @@ function MainApp() {
     );
   }
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
+      <RouterProvider router={router} />
+    </>
+  );
 }
 
 export default App;
