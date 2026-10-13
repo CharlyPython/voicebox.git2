@@ -441,9 +441,8 @@ def _get_non_qwen_tts_configs() -> list[ModelConfig]:
             hf_repo_id="k2-fsa/OmniVoice",
             size_mb=3300,
             supports_instruct=True,
-            # OmniVoice covers 600+ languages; these are the ones already in
-            # Voicebox's language enum. Widening that enum is a separate change
-            # that touches the API contract and the frontend.
+            # OmniVoice covers 600+ languages; expose the subset supported
+            # by Voicebox's API and frontend, including Urdu.
             languages=[
                 "zh",
                 "en",
@@ -468,6 +467,7 @@ def _get_non_qwen_tts_configs() -> list[ModelConfig]:
                 "sv",
                 "sw",
                 "tr",
+                "ur",
             ],
         ),
     ]

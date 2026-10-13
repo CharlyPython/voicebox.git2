@@ -260,6 +260,7 @@ def test_omnivoice_is_registered():
     assert config.engine == "omnivoice"
     assert config.hf_repo_id == "k2-fsa/OmniVoice"
     assert config.supports_instruct is True
+    assert "ur" in config.languages
 
 
 def test_omnivoice_accepts_cloned_profiles():
