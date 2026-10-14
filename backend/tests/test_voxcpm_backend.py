@@ -1,5 +1,6 @@
 """Unit tests for the native VoxCPM2 backend without loading model weights."""
 
+import asyncio
 from types import SimpleNamespace
 
 import numpy as np
@@ -95,6 +96,8 @@ def test_model_registry_contains_voxcpm2():
     assert config is not None
     assert config.engine == "voxcpm2"
     assert config.hf_repo_id == "openbmb/VoxCPM2"
+    assert config.supports_instruct is True
+    assert len(config.languages) == 30
     assert isinstance(get_tts_backend_for_engine("voxcpm2"), VoxCPMBackend)
 
 
@@ -106,3 +109,31 @@ def test_voxcpm2_request_accepts_languages_added_by_the_engine():
 
     assert request.language == "th"
     assert profile.language == "th"
+
+
+@pytest.mark.parametrize("engine", ["voxcpm2", "omnivoice", "qwen_voice_design"])
+def test_request_contracts_preserve_all_new_engines(engine):
+    from backend.models import GenerationRequest, MCPClientBindingUpsert, SpeakRequest
+
+    assert GenerationRequest(profile_id="p", text="hello", engine=engine).engine == engine
+    assert SpeakRequest(text="hello", engine=engine).engine == engine
+    assert MCPClientBindingUpsert(client_id="test", default_engine=engine).default_engine == engine
+
+
+def test_voxcpm2_respects_force_cpu_override(monkeypatch):
+    monkeypatch.setenv("VOICEBOX_FORCE_CPU", "1")
+    assert VoxCPMBackend().device == "cpu"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_model_loads_only_initialize_once(monkeypatch):
+    backend = VoxCPMBackend()
+    calls = []
+
+    def fake_load():
+        calls.append(True)
+        backend.model = object()
+
+    monkeypatch.setattr(backend, "_load_model_sync", fake_load)
+    await asyncio.gather(backend.load_model(), backend.load_model())
+    assert calls == [True]

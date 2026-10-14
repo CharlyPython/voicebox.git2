@@ -23,14 +23,16 @@
 
 The backend exposes:
 
-- **`TTSBackend` Protocol** with eight concrete engine implementations:
+- **`TTSBackend` Protocol** with ten concrete engine implementations:
   - Qwen3-TTS (PyTorch or MLX depending on platform)
   - Qwen CustomVoice (predefined speakers with instruct)
+  - Qwen VoiceDesign (voices from written descriptions)
   - LuxTTS (fast, CPU-friendly)
   - Chatterbox Multilingual (23 languages)
   - Chatterbox Turbo (English, paralinguistic tags)
   - TADA (1B English, 3B multilingual via HumeAI)
   - Kokoro 82M (pre-built voices, CPU realtime)
+  - OmniVoice (23 exposed languages, non-commercial weights)
   - VoxCPM2 (30-language local cloning)
 - **`STTBackend` Protocol** for Whisper (PyTorch or MLX-Whisper)
 - **Profiles / History / Stories** services for persistence and timeline editing
@@ -51,6 +53,9 @@ The backend exposes:
 | TADA | `backend/backends/hume_backend.py` | HumeAI TADA — 1B English + 3B Multilingual |
 | Kokoro | `backend/backends/kokoro_backend.py` | Kokoro 82M — CPU realtime, pre-built voices |
 | Qwen CustomVoice | `backend/backends/qwen_custom_voice_backend.py` | Qwen CustomVoice — predefined speakers with instruct |
+| Qwen VoiceDesign | `backend/backends/qwen_voice_design_backend.py` | Qwen VoiceDesign — voices from written descriptions |
+| OmniVoice | `backend/backends/omnivoice_backend.py` | OmniVoice — non-commercial multilingual cloning |
+| VoxCPM2 | `backend/backends/voxcpm_backend.py` | VoxCPM2 — 30-language local cloning |
 | Platform detect | `backend/platform_detect.py` | Apple Silicon → MLX, else → PyTorch |
 | API types | `backend/models.py` | Pydantic request/response models |
 | HF progress | `backend/utils/hf_progress.py` | HFProgressTracker (tqdm patching for download progress) |
@@ -70,7 +75,7 @@ The backend exposes:
 ```
 POST /generate
   1. Look up voice profile from DB
-  2. Resolve engine from request (qwen | qwen_custom_voice | luxtts | chatterbox | chatterbox_turbo | tada | kokoro | voxcpm2)
+  2. Resolve engine from request or profile preference (qwen | qwen_custom_voice | qwen_voice_design | luxtts | chatterbox | chatterbox_turbo | tada | kokoro | omnivoice | voxcpm2)
   3. Get backend: get_tts_backend_for_engine(engine)  # thread-safe singleton per engine
   4. Check model cache → if missing, trigger background download, return HTTP 202
   5. Load model (lazy): tts_backend.load_model(model_size)
@@ -122,7 +127,7 @@ POST /generate
 Shipped 2026-04-25 (PR #544). Voicebox went from a voice-cloning studio to a full voice studio — dictation in, agent speech out, a local LLM in the middle.
 
 - **Dictation** — global hotkey capture (push-to-talk + toggle chords), on-screen pill with live state, auto-paste into the focused field with clipboard save/restore, chord-picker UI. Scoped Accessibility permission (transcripts still land if paste is denied).
-- **MCP server** at `http://127.0.0.1:17493/mcp` — `voicebox.speak` / `.transcribe` / `.list_captures` / `.list_profiles`. Streamable HTTP primary transport, stdio sidecar shim, per-client voice binding via `X-Voicebox-Client-Id`. Speaking pill always shows agent-initiated output.
+- **MCP server** at `http://127.0.0.1:17493/mcp` — `voicebox_speak` / `voicebox_transcribe` / `voicebox_list_captures` / `voicebox_list_profiles`. Streamable HTTP primary transport, stdio sidecar shim, per-client voice binding via `X-Voicebox-Client-Id`. Speaking pill always shows agent-initiated output.
 - **Personality** — voice profiles carry an optional ≤2000-char persona. Compose (shuffle an in-character line) and Speak-in-character (rewrite input before TTS), both on a local Qwen3 LLM that doubles as the refinement model.
 - **Refinement** — on-device Qwen3 strips fillers, fixes punctuation, optional self-correction rewrites; Whisper hallucination-loop stripping at a 6-token threshold; per-capture flag snapshots; model picker (0.6B / 1.7B / 4B).
 - **`POST /speak` REST wrapper** and **i18next foundation** (English + zh-CN) also landed.
@@ -258,7 +263,7 @@ Shipped 2026-04-25 (PR #544). Voicebox went from a voice-cloning studio to a ful
 
 - **Thread-safe backend registry** (`_tts_backends` dict + `_tts_backends_lock`) with double-checked locking
 - **Per-engine backend instances** — each engine gets its own singleton, loaded lazily
-- **Engine field on GenerationRequest** — frontend sends `engine: 'qwen' | 'qwen_custom_voice' | 'luxtts' | 'chatterbox' | 'chatterbox_turbo' | 'tada' | 'kokoro' | 'voxcpm2'`
+- **Engine field on GenerationRequest** — frontend sends `engine: 'qwen' | 'qwen_custom_voice' | 'qwen_voice_design' | 'luxtts' | 'chatterbox' | 'chatterbox_turbo' | 'tada' | 'kokoro' | 'omnivoice' | 'voxcpm2'`
 - **Per-engine language filtering** — `ENGINE_LANGUAGES` map in frontend, backend regex accepts all languages
 - **Per-engine voice prompts** — `create_voice_prompt_for_profile()` dispatches to the correct backend
 - **Profile type system** — preset vs cloned profiles, UI grays out incompatible engines and auto-switches on selection
@@ -685,7 +690,7 @@ The generation form now uses a flat model dropdown with engine-based routing. Pe
 
 ### 7. Engine Sprawl — NEW
 
-Eight TTS engines are represented by the active integration set, with more candidates queued. Issue #419 asks for a first-class vs experimental distinction. Related: issue #420 asks for formalized platform support tiers. Combined, these would let us ship more engines more confidently with clearer expectations for users.
+Ten TTS engines are represented by the active integration set, with more candidates queued. Issue #419 asks for a first-class vs experimental distinction. Related: issue #420 asks for formalized platform support tiers. Combined, these would let us ship more engines more confidently with clearer expectations for users.
 
 ---
 

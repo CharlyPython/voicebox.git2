@@ -27,7 +27,7 @@ shared between input and output.
   into the focused field on macOS and Windows (see [Dictation](/overview/dictation))
 - **Captures tab** — paired audio + transcript archive, retranscribe,
   refine, play-as-voice, promote-to-sample (see [Captures](/overview/captures))
-- **Voice cloning** — 6 cloning engines covering 30 languages. Zero-shot
+- **Voice cloning** — 7 cloning engines covering 30 languages. Zero-shot
   cloning from a reference sample (see [Voice Cloning](/overview/voice-cloning))
 - **Preset voices** — 50+ curated voices via Kokoro and Qwen CustomVoice
   for when you don't want to clone (see [Preset Voices](/overview/preset-voices))
@@ -46,18 +46,20 @@ shared between input and output.
 
 ## TTS Engines
 
-Eight engines with different strengths, switchable per-generation:
+Ten engines with different strengths, switchable per-generation:
 
 | Engine | Profile Type | Languages | Strengths |
 |--------|--------------|-----------|-----------|
 | **Qwen3-TTS** (0.6B / 1.7B) | Cloned | 10 | High-quality multilingual cloning |
 | **Qwen CustomVoice** (0.6B / 1.7B) | Preset (9 voices) | 10 | Natural-language delivery control (tone, emotion, pace) |
+| **Qwen VoiceDesign** (1.7B) | Designed | 10 | Builds a voice from a written description — no reference audio or preset |
 | **LuxTTS** | Cloned | English | Lightweight (~1GB VRAM), 48kHz output, 150x realtime on CPU |
 | **Chatterbox Multilingual** | Cloned | 23 | Broadest language coverage |
 | **Chatterbox Turbo** | Cloned | English | Fast 350M model with paralinguistic emotion/sound tags |
 | **TADA** (1B / 3B) | Cloned | 10 | HumeAI speech-language model — 700s+ coherent audio |
 | **Kokoro** | Preset (50 voices) | 9 | 82M parameters, CPU realtime, lowest VRAM of any engine |
 | **VoxCPM2** | Cloned | 30 | 2B multilingual model, 48kHz output, transcript-guided cloning |
+| **OmniVoice** | Cloned | 23 exposed | Multilingual cloning and attribute instructions; non-commercial weights |
 
 ## STT and local LLM
 
@@ -101,7 +103,7 @@ No cloud fallback, no bring-your-own-API-key. Local is the product.
 | Frontend | React, TypeScript, Tailwind CSS |
 | State | Zustand, React Query |
 | Backend | FastAPI (Python) |
-| TTS Engines | Qwen3-TTS, Qwen CustomVoice, LuxTTS, Chatterbox, Chatterbox Turbo, TADA, Kokoro |
+| TTS Engines | Qwen3-TTS, Qwen CustomVoice, Qwen VoiceDesign, LuxTTS, Chatterbox, Chatterbox Turbo, TADA, Kokoro, OmniVoice (non-commercial), VoxCPM2 |
 | STT | Whisper / Whisper Turbo (PyTorch or MLX) |
 | Local LLM | Qwen3 0.6B / 1.7B / 4B (MLX or PyTorch) |
 | Effects | Pedalboard (Spotify) |

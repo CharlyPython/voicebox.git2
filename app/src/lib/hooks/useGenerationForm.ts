@@ -5,6 +5,7 @@ import * as z from 'zod';
 import { useToast } from '@/components/ui/use-toast';
 import { apiClient } from '@/lib/api/client';
 import type { EffectConfig } from '@/lib/api/types';
+import { engineSupportsInstruct } from '@/lib/constants/engines';
 import { LANGUAGE_CODES, type LanguageCode } from '@/lib/constants/languages';
 import { useGeneration } from '@/lib/hooks/useGeneration';
 import { useModelDownloadToast } from '@/lib/hooks/useModelDownloadToast';
@@ -22,11 +23,13 @@ const generationSchema = z.object({
     .enum([
       'qwen',
       'qwen_custom_voice',
+      'qwen_voice_design',
       'luxtts',
       'chatterbox',
       'chatterbox_turbo',
       'tada',
       'kokoro',
+      'omnivoice',
       'voxcpm2',
     ])
     .optional(),
@@ -101,11 +104,15 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
                   : 'tada-1b'
                 : engine === 'kokoro'
                   ? 'kokoro'
-                  : engine === 'voxcpm2'
-                    ? 'voxcpm2'
-                    : engine === 'qwen_custom_voice'
-                      ? `qwen-custom-voice-${data.modelSize}`
-                      : `qwen-tts-${data.modelSize}`;
+                  : engine === 'qwen_voice_design'
+                    ? 'qwen-voice-design-1.7B'
+                    : engine === 'omnivoice'
+                      ? 'omnivoice'
+                      : engine === 'voxcpm2'
+                        ? 'voxcpm2'
+                        : engine === 'qwen_custom_voice'
+                          ? `qwen-custom-voice-${data.modelSize}`
+                          : `qwen-tts-${data.modelSize}`;
       const displayName =
         engine === 'luxtts'
           ? 'LuxTTS'
@@ -119,15 +126,19 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
                   : 'TADA 1B'
                 : engine === 'kokoro'
                   ? 'Kokoro 82M'
-                  : engine === 'voxcpm2'
-                    ? 'VoxCPM2'
-                    : engine === 'qwen_custom_voice'
-                      ? data.modelSize === '1.7B'
-                        ? 'Qwen CustomVoice 1.7B'
-                        : 'Qwen CustomVoice 0.6B'
-                      : data.modelSize === '1.7B'
-                        ? 'Qwen TTS 1.7B'
-                        : 'Qwen TTS 0.6B';
+                  : engine === 'qwen_voice_design'
+                    ? 'Qwen VoiceDesign 1.7B'
+                    : engine === 'omnivoice'
+                      ? 'OmniVoice'
+                      : engine === 'voxcpm2'
+                        ? 'VoxCPM2'
+                        : engine === 'qwen_custom_voice'
+                          ? data.modelSize === '1.7B'
+                            ? 'Qwen CustomVoice 1.7B'
+                            : 'Qwen CustomVoice 0.6B'
+                          : data.modelSize === '1.7B'
+                            ? 'Qwen TTS 1.7B'
+                            : 'Qwen TTS 0.6B';
 
       // Check if model needs downloading
       try {
@@ -144,9 +155,7 @@ export function useGenerationForm(options: UseGenerationFormOptions = {}) {
 
       const hasModelSizes =
         engine === 'qwen' || engine === 'qwen_custom_voice' || engine === 'tada';
-      // Qwen CustomVoice accepts instruct directly. VoxCPM2 maps it to its
-      // parenthesized natural-language control prefix in the backend.
-      const supportsInstruct = engine === 'qwen_custom_voice' || engine === 'voxcpm2';
+      const supportsInstruct = engineSupportsInstruct(engine);
       const effectsChain = options.getEffectsChain?.();
       // This now returns immediately with status="generating"
       const result = await generation.mutateAsync({
