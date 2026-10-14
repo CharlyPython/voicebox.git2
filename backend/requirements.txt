@@ -19,6 +19,13 @@ huggingface_hub>=0.20.0
 # >=0.1.1 for Qwen3TTSModel.generate_voice_design (the qwen_voice_design engine)
 qwen-tts>=0.1.1
 
+# VoxCPM2 runtime dependencies. The voxcpm package itself is installed with
+# --no-deps by setup scripts because its full metadata pulls Gradio, training,
+# ModelScope, and denoising packages that Voicebox does not use.
+einops>=0.8.0
+safetensors>=0.4.0
+tqdm>=4.60.0
+
 # LuxTTS (voice cloning engine)
 # piper-phonemize needs custom index (no PyPI wheels)
 --find-links https://k2-fsa.github.io/icefall/piper_phonemize.html
@@ -43,7 +50,7 @@ pyloudnorm
 # descript-audio-codec is NOT installed — it pulls onnx/tensorboard
 # via descript-audiotools.  A lightweight shim in utils/dac_shim.py
 # provides the only class TADA uses: Snake1d.)
-torchaudio
+torchaudio>=2.5.0
 
 # OmniVoice sub-dependencies (omnivoice itself is installed --no-deps
 # in the setup script because it requires transformers>=5.3, while several

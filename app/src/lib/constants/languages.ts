@@ -6,6 +6,7 @@
  * Chatterbox Multilingual supports 23 languages.
  * Chatterbox Turbo is English-only.
  * Kokoro supports 8 languages.
+ * VoxCPM2 supports 30 languages.
  */
 
 /** All languages that any engine supports. */
@@ -20,10 +21,14 @@ export const ALL_LANGUAGES = {
   fr: 'French',
   he: 'Hebrew',
   hi: 'Hindi',
+  id: 'Indonesian',
   it: 'Italian',
   ja: 'Japanese',
+  km: 'Khmer',
   ko: 'Korean',
+  lo: 'Lao',
   ms: 'Malay',
+  my: 'Burmese',
   nl: 'Dutch',
   no: 'Norwegian',
   pl: 'Polish',
@@ -31,7 +36,10 @@ export const ALL_LANGUAGES = {
   ru: 'Russian',
   sv: 'Swedish',
   sw: 'Swahili',
+  th: 'Thai',
+  tl: 'Tagalog',
   tr: 'Turkish',
+  vi: 'Vietnamese',
   zh: 'Chinese',
 } as const;
 
@@ -71,8 +79,7 @@ export const ENGINE_LANGUAGES: Record<string, readonly LanguageCode[]> = {
   kokoro: ['en', 'es', 'fr', 'hi', 'it', 'pt', 'ja', 'zh'],
   qwen_custom_voice: ['zh', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'pt', 'es', 'it'],
   qwen_voice_design: ['zh', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'pt', 'es', 'it'],
-  // OmniVoice covers 600+ languages. Listed here are the ones ALL_LANGUAGES
-  // already knows -- widening that list is a separate change.
+  // Keep OmniVoice's validated 23-language subset; VoxCPM2 adds seven more below.
   omnivoice: [
     'ar',
     'da',
@@ -96,6 +103,38 @@ export const ENGINE_LANGUAGES: Record<string, readonly LanguageCode[]> = {
     'sv',
     'sw',
     'tr',
+    'zh',
+  ],
+  voxcpm2: [
+    'ar',
+    'da',
+    'de',
+    'el',
+    'en',
+    'es',
+    'fi',
+    'fr',
+    'he',
+    'hi',
+    'id',
+    'it',
+    'ja',
+    'km',
+    'ko',
+    'lo',
+    'ms',
+    'my',
+    'nl',
+    'no',
+    'pl',
+    'pt',
+    'ru',
+    'sv',
+    'sw',
+    'th',
+    'tl',
+    'tr',
+    'vi',
     'zh',
   ],
 } as const;

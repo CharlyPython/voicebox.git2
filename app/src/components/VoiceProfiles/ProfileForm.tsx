@@ -76,6 +76,7 @@ const DEFAULT_ENGINE_OPTIONS = [
   { value: 'tada', label: 'TADA' },
   { value: 'kokoro', label: 'Kokoro 82M' },
   { value: 'omnivoice', label: 'OmniVoice (non-commercial)' },
+  { value: 'voxcpm2', label: 'VoxCPM2' },
 ] as const;
 
 function makeProfileSchema(t: (key: string) => string) {

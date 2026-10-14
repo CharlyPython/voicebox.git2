@@ -146,9 +146,10 @@ async def test_speech_wav_default_with_openai_alias_uses_profile_engine(client, 
     assert calls["voice_prompt_engine"] == "qwen"
 
 
-async def test_speech_model_is_a_voicebox_engine(client, app):
-    await client.audio.speech.create(model="chatterbox", voice="Morgan", input="Hi")
-    assert app.state.calls["load"] == ("chatterbox", "default")
+@pytest.mark.parametrize("engine", ["chatterbox", "voxcpm2", "omnivoice"])
+async def test_speech_model_is_a_voicebox_engine(client, app, engine):
+    await client.audio.speech.create(model=engine, voice="Morgan", input="Hi")
+    assert app.state.calls["load"] == (engine, "default")
 
 
 async def test_speech_model_variant_selects_size(client, app):

@@ -25,3 +25,22 @@ def test_explicit_engine_is_preserved():
 def test_invalid_explicit_engine_is_rejected():
     with pytest.raises(ValidationError):
         _request(engine="invalid")
+
+
+@pytest.mark.parametrize("engine", ["voxcpm2", "omnivoice", "qwen_voice_design"])
+def test_omitted_engine_uses_saved_profile_preference(engine):
+    from types import SimpleNamespace
+
+    from backend.routes.generations import _resolve_generation_engine
+
+    profile = SimpleNamespace(default_engine=engine, voice_type="cloned", preset_engine=None)
+    assert _resolve_generation_engine(_request(), profile) == engine
+
+
+@pytest.mark.parametrize("engine", ["voxcpm2", "omnivoice"])
+def test_cloned_profiles_accept_both_multilingual_engines(engine):
+    from types import SimpleNamespace
+
+    from backend.services.profiles import validate_profile_engine
+
+    validate_profile_engine(SimpleNamespace(voice_type="cloned"), engine)

@@ -78,7 +78,7 @@ def test_load_by_model_name_targets_that_model(client, loaded):
 
 @pytest.mark.parametrize(
     "model_name",
-    ["qwen-tts-0.6B", "chatterbox-tts", "whisper-turbo", "qwen3-0.6b"],
+    ["qwen-tts-0.6B", "chatterbox-tts", "whisper-turbo", "qwen3-0.6b", "voxcpm2", "omnivoice", "qwen-voice-design-1.7B"],
 )
 def test_load_dispatches_across_engine_families(client, loaded, model_name):
     """TTS, STT, and LLM entries all resolve through the same registry."""

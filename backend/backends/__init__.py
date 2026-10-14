@@ -239,6 +239,7 @@ TTS_ENGINES = {
     "tada": "TADA",
     "kokoro": "Kokoro",
     "omnivoice": "OmniVoice",
+    "voxcpm2": "VoxCPM2",
 }
 
 LLM_ENGINES = {
@@ -431,6 +432,19 @@ def _get_non_qwen_tts_configs() -> list[ModelConfig]:
             languages=["en", "es", "fr", "hi", "it", "pt", "ja", "zh"],
         ),
         ModelConfig(
+            model_name="voxcpm2",
+            display_name="VoxCPM2",
+            engine="voxcpm2",
+            hf_repo_id="openbmb/VoxCPM2",
+            size_mb=4800,
+            supports_instruct=True,
+            languages=[
+                "zh", "en", "ja", "ko", "de", "fr", "ru", "pt", "es", "it",
+                "he", "ar", "da", "el", "fi", "hi", "id", "km", "lo", "ms",
+                "my", "nl", "no", "pl", "sv", "sw", "th", "tl", "tr", "vi",
+            ],
+        ),
+        ModelConfig(
             model_name="omnivoice",
             # Non-commercial: the OmniVoice weights are CC-BY-NC (the code is
             # Apache-2.0 and the bundled Higgs Audio V2 codec is under the Boson
@@ -441,9 +455,8 @@ def _get_non_qwen_tts_configs() -> list[ModelConfig]:
             hf_repo_id="k2-fsa/OmniVoice",
             size_mb=3300,
             supports_instruct=True,
-            # OmniVoice covers 600+ languages; these are the ones already in
-            # Voicebox's language enum. Widening that enum is a separate change
-            # that touches the API contract and the frontend.
+            # Retain OmniVoice's validated 23-language subset. VoxCPM2 extends
+            # the API's language enum separately.
             languages=[
                 "zh",
                 "en",
@@ -846,6 +859,10 @@ def get_tts_backend_for_engine(engine: str) -> TTSBackend:
             from .qwen_custom_voice_backend import QwenCustomVoiceBackend
 
             backend = QwenCustomVoiceBackend()
+        elif engine == "voxcpm2":
+            from .voxcpm_backend import VoxCPMBackend
+
+            backend = VoxCPMBackend()
         elif engine == "qwen_voice_design":
             from .qwen_voice_design_backend import QwenVoiceDesignBackend
 

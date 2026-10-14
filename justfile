@@ -125,6 +125,8 @@ setup-python:
     # OmniVoice requires transformers>=5.3; we vendor the one class it
     # needs from 5.x (see backend/vendor/higgs_audio_v2_tokenizer).
     "{{ python }}" -m pip install --no-deps omnivoice
+    # VoxCPM's optional UI/training/denoiser dependency tree is not used by Voicebox.
+    "{{ python }}" -m pip install --no-deps 'voxcpm>=2.0.3,<2.1'
     # Apple Silicon: install MLX backend
     if [ "$(uname -m)" = "arm64" ] && [ "$(uname)" = "Darwin" ]; then
         echo "Detected Apple Silicon — installing MLX dependencies..."
@@ -211,6 +213,7 @@ setup-python:
     Invoke-Pip install --no-deps chatterbox-tts; \
     Invoke-Pip install --no-deps hume-tada; \
     Invoke-Pip install --no-deps omnivoice; \
+    Invoke-Pip install --no-deps "voxcpm>=2.0.3,<2.1"; \
     Invoke-Pip install git+https://github.com/QwenLM/Qwen3-TTS.git; \
     Invoke-Pip install pyinstaller ruff pytest pytest-asyncio openai -q; \
     Write-Host "Python environment ready."
