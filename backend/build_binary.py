@@ -217,6 +217,8 @@ def build_server(cuda=False, rocm=False):
             # modeling_qwen3_tts.py — needs physical .py source files bundled
             "--collect-all",
             "qwen_tts",
+            "--collect-all",
+            "sox",
             # Fix for pkg_resources and jaraco namespace packages
             "--hidden-import",
             "pkg_resources.extern",
