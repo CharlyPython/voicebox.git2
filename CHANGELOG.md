@@ -9,6 +9,8 @@
 
 ### Text-to-speech
 
+- **Reuse prepared reference audio for multi-sample voices.** Repeated generations reuse the combined WAV when sample content, transcripts, order and engine are unchanged; edits invalidate it and bypassing the cache still rebuilds it. Reference decoding, hashing and WAV writes run off the API event loop, and combined WAVs are published atomically.
+
 - **Design a voice from a written description.** The profile form gains a third source, "Describe a voice", next to clone-from-audio and built-in voice: write the voice you want ("a warm, gravelly older man with a slow Scottish lilt") and the profile is created as a `designed` voice backed by the new `qwen_voice_design` engine (Qwen3-TTS-12Hz-1.7B-VoiceDesign, 10 languages, local, Apache-2.0 weights). Designed profiles work everywhere a profile does: `/generate`, `/speak`, MCP `voicebox_speak`, stories, and dictation TTS. A per-generation instruct layers onto the description instead of replacing it. — @Lvigentini ([#1012](https://github.com/jamiepine/voicebox/pull/1012))
 
 ### Dictation and agents
