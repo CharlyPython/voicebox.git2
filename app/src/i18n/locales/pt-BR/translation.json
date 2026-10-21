@@ -1157,7 +1157,7 @@
       },
       "switchToCpu": {
         "title": "Mudar para o backend de CPU",
-        "description": "Desativa a aceleração por GPU. Você pode baixar o CUDA novamente depois.",
+        "description": "Desativa a aceleração por GPU. Você pode baixar o backend de GPU novamente depois.",
         "button": "Mudar"
       },
       "remove": {
