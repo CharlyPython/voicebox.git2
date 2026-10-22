@@ -1310,5 +1310,27 @@
       "migrationFailedGeneric": "Failed to migrate models",
       "migrationConnectionLost": "Lost connection during migration"
     }
+  },
+  "speechPlayer": {
+    "title": "Voicebox speech",
+    "regionLabel": "Voicebox speech player",
+    "replay": "Replay speech",
+    "resume": "Resume speech",
+    "pause": "Pause speech",
+    "stop": "Stop speech",
+    "dismiss": "Dismiss speech player",
+    "preparing": "Preparing speech…",
+    "finished": "Finished · replay or choose a position",
+    "paused": "Paused",
+    "playing": "Playing",
+    "generatingMore": "Playing · generating more audio",
+    "position": "Speech playback position",
+    "positionValue": "{{position}} of {{duration}}",
+    "bufferedPositionValue": "{{position}} of {{duration}} buffered",
+    "speed": "Speed",
+    "decreaseSpeed": "Decrease speech speed",
+    "increaseSpeed": "Increase speech speed",
+    "playbackSpeed": "Speech playback speed",
+    "speedUnavailable": "Speed unavailable for this output"
   }
 }

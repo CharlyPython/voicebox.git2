@@ -6,6 +6,8 @@ mod audio_capture;
 mod audio_output;
 mod clipboard;
 mod focus_capture;
+#[cfg(target_os = "macos")]
+mod widget_focus;
 #[cfg(desktop)]
 mod hotkey_monitor;
 mod input_monitoring;
@@ -22,7 +24,7 @@ use tokio::sync::mpsc;
 
 pub const DICTATE_WINDOW_LABEL: &str = "dictate";
 const DICTATE_WINDOW_WIDTH: f64 = 420.0;
-const DICTATE_WINDOW_HEIGHT: f64 = 64.0;
+const DICTATE_WINDOW_HEIGHT: f64 = 144.0;
 
 /// Create the floating dictate webview hidden. The HotkeyMonitor shows it on
 /// chord-start; the frontend hides it when the capture pipeline finishes.
@@ -36,6 +38,8 @@ fn build_dictate_window(app: &tauri::AppHandle) -> tauri::Result<tauri::WebviewW
         WebviewUrl::App("?view=dictate".into()),
     )
     .title("Voicebox Dictate")
+    .focused(false)
+    .accept_first_mouse(true)
     .inner_size(DICTATE_WINDOW_WIDTH, DICTATE_WINDOW_HEIGHT)
     .decorations(false)
     .transparent(true)
@@ -117,6 +121,12 @@ pub fn show_dictate_window(app: &tauri::AppHandle) {
     // The click-through toggle is a macOS workaround and is never set on Linux.
     #[cfg(not(target_os = "linux"))]
     let _ = window.set_ignore_cursor_events(false);
+    #[cfg(target_os = "macos")]
+    {
+        let native_window = window.clone();
+        let _ = app.run_on_main_thread(move || widget_focus::show(&native_window));
+    }
+    #[cfg(not(target_os = "macos"))]
     let _ = window.show();
 }
 
@@ -1442,12 +1452,19 @@ pub fn run() {
                 let handle_for_hide = app.handle().clone();
                 app.handle().listen("dictate:hide", move |_event| {
                     if let Some(window) = handle_for_hide.get_webview_window(DICTATE_WINDOW_LABEL) {
-                        // Skip on Linux: aborts if the window was never realized
-                        // (see show_dictate_window).
-                        #[cfg(not(target_os = "linux"))]
-                        let _ = window.set_ignore_cursor_events(true);
-                        let _ = window.set_position(PhysicalPosition::new(-10_000, -10_000));
-                        let _ = window.hide();
+                        let _ = handle_for_hide.run_on_main_thread(move || {
+                            #[cfg(target_os = "macos")]
+                            let restore = widget_focus::dismiss_target(&window);
+                            // Skip on Linux: aborts if the window was never realized.
+                            #[cfg(not(target_os = "linux"))]
+                            let _ = window.set_ignore_cursor_events(true);
+                            let _ = window.set_position(PhysicalPosition::new(-10_000, -10_000));
+                            let _ = window.hide();
+                            #[cfg(target_os = "macos")]
+                            if let Some(pid) = restore {
+                                let _ = focus_capture::activate_pid(pid);
+                            }
+                        });
                     }
                 });
 

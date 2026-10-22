@@ -36,9 +36,7 @@ export const tauriAudio: PlatformAudio = {
     });
   },
 
-  stopPlayback(): void {
-    invoke('stop_audio_playback').catch((error) => {
-      console.error('Failed to stop audio playback:', error);
-    });
+  async stopPlayback(): Promise<void> {
+    await invoke('stop_audio_playback');
   },
 };
