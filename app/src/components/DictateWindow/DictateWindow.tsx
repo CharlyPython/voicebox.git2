@@ -1,27 +1,43 @@
 import { invoke } from '@tauri-apps/api/core';
 import { emit, listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CapturePill } from '@/components/CapturePill/CapturePill';
 import { apiClient } from '@/lib/api/client';
 import type { FocusSnapshot } from '@/lib/api/types';
+import { type FileSpeechState, FileSpeechTransport } from '@/lib/audio/FileSpeechTransport';
 import { useCaptureRecordingSession } from '@/lib/hooks/useCaptureRecordingSession';
+import { SpeechPlayer } from './SpeechPlayer';
 
-/**
- * Floating dictate surface shown in a separate transparent Tauri window.
- * Mounted when the URL contains ``?view=dictate``. The main window bypasses
- * this branch and renders the full app shell.
- *
- * The pill surfaces for two independent cycles:
- *   1. User dictation — driven by ``dictate:start`` / ``dictate:stop``
- *      from the Rust hotkey monitor.
- *   2. Agent speech — driven by ``dictate:speak-start`` / ``dictate:speak-end``
- *      from the Rust ``speak_monitor`` (which owns the backend SSE stream).
- *      On speak-start we subscribe to this single generation's status SSE,
- *      then play ``/audio/{id}`` via a plain ``HTMLAudioElement`` when it
- *      lands. When the audio element's ``ended`` fires, we emit
- *      ``dictate:hide`` so Rust tucks the window away.
- */
+interface MainPlayerState {
+  source: 'main-player';
+  sessionId: string;
+  title?: string;
+  status: 'playing' | 'paused' | 'stopped' | 'ended';
+  currentTime: number;
+  duration: number;
+  canSeek?: boolean;
+  playbackRate?: number;
+  canChangeRate?: boolean;
+}
+
+/** Keep the finished recording available for replay without leaving its overlay visible. */
+function useFinishedPlayerHidden(id: string | undefined, ended: boolean) {
+  const [hiddenId, setHiddenId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!id || !ended) {
+      setHiddenId(null);
+      return;
+    }
+    const timer = window.setTimeout(() => setHiddenId(id), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [id, ended]);
+  return ended && hiddenId === id;
+}
+
+/** Floating capture and speech controls; audio stays with its original playback owner. */
 export function DictateWindow() {
+  const { t } = useTranslation();
   // Force the host document chrome to be transparent so the Tauri window
   // takes on the pill's own shape.
   useEffect(() => {
@@ -89,208 +105,179 @@ export function DictateWindow() {
     };
   }, []);
 
-  // --- Agent-speak cycle ---------------------------------------------------
-
-  const [speaking, setSpeaking] = useState<{
-    generationId: string;
-    // Null while the backend is still generating audio; set to the
-    // wall-clock timestamp when audio playback actually begins, so the
-    // pill's elapsed counter only ticks while sound is coming out.
-    startedAt: number | null;
-  } | null>(null);
-  const [speakElapsed, setSpeakElapsed] = useState(0);
-
-  // Refs so handlers inside long-lived `listen()` callbacks can read the
-  // latest state without re-subscribing on every render.
-  const speakingRef = useRef<typeof speaking>(null);
-  speakingRef.current = speaking;
-  const statusSourceRef = useRef<EventSource | null>(null);
-  const statusTimeoutRef = useRef<number | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const clearStatusTimeout = () => {
-    if (statusTimeoutRef.current !== null) {
-      window.clearTimeout(statusTimeoutRef.current);
-      statusTimeoutRef.current = null;
-    }
-  };
-
-  const dismissSpeak = (id?: string) => {
-    // Guard against a late dismiss targeting a stale cycle (a new speak
-    // already started by the time audio.ended from the previous one fired).
-    if (id && speakingRef.current && speakingRef.current.generationId !== id) return;
-    statusSourceRef.current?.close();
-    statusSourceRef.current = null;
-    clearStatusTimeout();
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
-      audioRef.current = null;
-    }
-    setSpeaking(null);
-  };
-
-  const startSpeakPlayback = (generationId: string) => {
-    const audio = new Audio(apiClient.getAudioUrl(generationId));
-    audio.onended = () => dismissSpeak(generationId);
-    audio.onerror = () => dismissSpeak(generationId);
-    // The pill window stays hidden through the ~1 s generation wait so the
-    // user doesn't see a silent pill. We surface it the moment audio
-    // actually starts playing, and that's also when the elapsed counter
-    // arms.
-    audio.onplaying = () => {
-      emit('dictate:show').catch(() => {});
-      setSpeaking((prev) =>
-        prev && prev.generationId === generationId
-          ? { ...prev, startedAt: Date.now() }
-          : prev,
-      );
-      setSpeakElapsed(0);
-    };
-    audioRef.current = audio;
-    audio.play().catch((err) => {
-      console.warn('[dictate] audio.play failed:', err);
-      dismissSpeak(generationId);
-    });
-  };
+  // Agent speech uses the existing generation-status and completed-audio endpoints.
+  const [speaking, setSpeaking] = useState<FileSpeechState | null>(null);
+  const transportRef = useRef<FileSpeechTransport | null>(null);
+  const [remoteSpeech, setRemoteSpeech] = useState<MainPlayerState | null>(null);
 
   useEffect(() => {
+    let disposed = false;
+    const publish = (state: FileSpeechState | null) => {
+      if (disposed) return;
+      setSpeaking(state);
+      void emit('dictate:speech-state', {
+        generationId: state?.generationId ?? null,
+        source: state?.source ?? null,
+        status: state?.status ?? 'idle',
+        paused: state?.status === 'paused',
+        position: state?.position ?? 0,
+        duration: state?.duration ?? null,
+        playbackRate: state?.playbackRate ?? 1,
+        canReplay: state?.duration !== null && Boolean(state),
+        canSeek: state?.duration !== null && Boolean(state),
+        canChangeRate: Boolean(state),
+        bufferedDuration: state?.duration ?? 0,
+      }).catch(() => {});
+    };
+    const transport = new FileSpeechTransport({
+      audioUrl: (id) => apiClient.getAudioUrl(id),
+      statusUrl: (id) => apiClient.getGenerationStatusUrl(id),
+      onChange: publish,
+    });
+    transportRef.current = transport;
     const unlistens: Promise<UnlistenFn>[] = [];
-
-    // Rust emits the SSE payload as a JSON *string* (not a parsed object);
-    // the payload shape for speak-start is
-    // {generation_id, profile_name, source, client_id}.
-    unlistens.push(
-      listen<string>('dictate:speak-start', (event) => {
-        let parsed: { generation_id?: string } = {};
-        try {
-          parsed = typeof event.payload === 'string' ? JSON.parse(event.payload) : {};
-        } catch {
-          return;
-        }
-        const id = parsed.generation_id;
-        if (!id) return;
-
-        // Tear down any previous cycle — last speak wins.
-        dismissSpeak();
-
-        setSpeaking({ generationId: id, startedAt: null });
-        setSpeakElapsed(0);
-
-        // Subscribe to this one generation's status. When it completes, the
-        // `/audio/{id}` endpoint will serve the WAV we need to play.
-        const source = new EventSource(apiClient.getGenerationStatusUrl(id));
-        statusSourceRef.current = source;
-        // Hard cap on how long the pill can sit in the 'speaking' state
-        // without ever hearing back from the backend. Covers the case where
-        // the gen row is deleted mid-flight (SSE 404s and EventSource silently
-        // retries) or the backend goes away while a request is in flight.
-        // Clears as soon as a real status event lands.
-        clearStatusTimeout();
-        statusTimeoutRef.current = window.setTimeout(() => {
-          statusTimeoutRef.current = null;
-          if (speakingRef.current?.generationId === id && !audioRef.current) {
-            dismissSpeak(id);
-          }
-        }, 60_000);
-        source.onmessage = (msg) => {
-          try {
-            const data = JSON.parse(msg.data) as { status?: string };
-            if (data.status === 'completed') {
-              clearStatusTimeout();
-              source.close();
-              if (statusSourceRef.current === source) statusSourceRef.current = null;
-              startSpeakPlayback(id);
-            } else if (data.status === 'failed' || data.status === 'not_found') {
-              clearStatusTimeout();
-              source.close();
-              dismissSpeak(id);
-            }
-          } catch {
-            // heartbeats / junk — ignore.
-          }
+    function subscribe<T>(name: string, callback: (payload: T) => void) {
+      unlistens.push(
+        listen<T>(name, (event) => {
+          if (!disposed) callback(event.payload);
+        }),
+      );
+    }
+    subscribe<string>('dictate:speak-start', (payload) => {
+      try {
+        const { generation_id, source } = JSON.parse(payload) as {
+          generation_id?: string;
+          source?: string;
         };
-        source.onerror = () => {
-          // EventSource auto-reconnects on transient drops; the timeout above
-          // is the backstop for the case where it never recovers.
+        if (!generation_id) return;
+        setRemoteSpeech((previous) => (previous?.status === 'ended' ? null : previous));
+        transport.start(generation_id, source);
+      } catch {
+        // Ignore malformed speak notifications.
+      }
+    });
+    subscribe<string>('dictate:speak-end', (payload) => {
+      try {
+        const { generation_id, status } = JSON.parse(payload) as {
+          generation_id?: string;
+          status?: string;
         };
-      }),
-    );
-
-    // Speak-end from the backend is advisory: the authoritative dismiss is
-    // `audio.ended`. But if generation failed or nothing ever triggered
-    // playback, a short grace window followed by forced dismiss avoids a
-    // stuck-visible pill.
-    unlistens.push(
-      listen<string>('dictate:speak-end', (event) => {
-        let parsed: { generation_id?: string; status?: string } = {};
-        try {
-          parsed = typeof event.payload === 'string' ? JSON.parse(event.payload) : {};
-        } catch {
-          return;
-        }
-        if (parsed.status && parsed.status !== 'completed') {
-          // Failed / cancelled — dismiss immediately.
-          if (parsed.generation_id) dismissSpeak(parsed.generation_id);
-          return;
-        }
-        // Completed: if audio never started (shouldn't happen, but guard),
-        // auto-dismiss after 15 s so the pill never stays forever.
-        const id = parsed.generation_id;
-        window.setTimeout(() => {
-          if (speakingRef.current?.generationId === id && !audioRef.current) {
-            dismissSpeak(id);
-          }
-        }, 15_000);
-      }),
-    );
-
+        if (generation_id) transport.generationEnded(generation_id, status);
+      } catch {
+        // Ignore malformed speak notifications.
+      }
+    });
+    subscribe('dictate:request-speech-state', () => publish(transport.current));
+    subscribe('dictate:toggle-speech', () => transport.toggle());
+    subscribe('dictate:replay-speech', () => transport.replay());
+    subscribe('dictate:stop-speech', () => transport.stop());
+    subscribe<{ generationId: string; position: number }>('dictate:seek-speech', (payload) => {
+      if (payload?.generationId === transport.current?.generationId)
+        transport.seek(payload.position);
+    });
+    subscribe<{ generationId?: string; rate: number }>('dictate:speech-rate', (payload) => {
+      if (
+        payload &&
+        (!payload.generationId || payload.generationId === transport.current?.generationId)
+      ) {
+        transport.setPlaybackRate(payload.rate);
+      }
+    });
+    const mainState = listen<MainPlayerState>('voicebox-playback-state', (event) => {
+      if (disposed || event.payload.source !== 'main-player') return;
+      setRemoteSpeech(event.payload.status === 'stopped' ? null : event.payload);
+    });
+    unlistens.push(mainState);
+    void mainState
+      .then(() => {
+        if (!disposed) void emit('voicebox-playback-request-state').catch(() => {});
+      })
+      .catch(() => {});
     return () => {
-      for (const p of unlistens) p.then((fn) => fn()).catch(() => {});
-      dismissSpeak();
+      disposed = true;
+      transport.stop();
+      transportRef.current = null;
+      for (const promise of unlistens) void promise.then((unlisten) => unlisten()).catch(() => {});
     };
   }, []);
 
-  // Advance the pill's elapsed-time label while audio is playing. Paused
-  // during the pre-playback generation window (startedAt is null) so the
-  // counter stays at 0:00 until sound actually starts.
+  const localHidden = useFinishedPlayerHidden(speaking?.generationId, speaking?.status === 'ended');
+  const remoteHidden = useFinishedPlayerHidden(
+    remoteSpeech?.sessionId,
+    remoteSpeech?.status === 'ended',
+  );
+  const localVisible = Boolean(
+    speaking &&
+      !localHidden &&
+      (speaking.status === 'playing' ||
+        speaking.status === 'ended' ||
+        (speaking.status === 'paused' && speaking.duration !== null)),
+  );
+  const showRemote = Boolean(
+    remoteSpeech && !remoteHidden && (!localVisible || speaking?.status === 'ended'),
+  );
+  const playerVisible = localVisible || showRemote;
+  const captureVisible = session.pillState !== 'hidden';
+
+  // Rust owns hiding/parking the transparent always-on-top window.
   useEffect(() => {
-    if (!speaking?.startedAt) return;
-    const anchor = speaking.startedAt;
-    const iv = window.setInterval(() => {
-      setSpeakElapsed(Date.now() - anchor);
-    }, 250);
-    return () => window.clearInterval(iv);
-  }, [speaking?.generationId, speaking?.startedAt]);
+    void emit(playerVisible || captureVisible ? 'dictate:show' : 'dictate:hide').catch(() => {});
+  }, [playerVisible, captureVisible]);
 
-  // --- Effective pill state -----------------------------------------------
-
-  const isSpeaking = Boolean(speaking);
-  const effectiveState = isSpeaking ? 'speaking' : session.pillState;
-  const effectiveElapsed = isSpeaking ? speakElapsed : session.pillElapsedMs;
-
-  // When the pill cycle ends (no capture AND no speak), tell Rust to tuck
-  // the window away. Rust owns the hide + park-off-screen + click-through
-  // combo because calling hide() directly from JS has been unreliable for
-  // transparent always-on-top windows on macOS.
-  useEffect(() => {
-    if (effectiveState === 'hidden') {
-      emit('dictate:hide').catch(() => {});
-    }
-  }, [effectiveState]);
+  const remoteCommand = (command: string, extra?: { rate?: number; time?: number }) => {
+    if (!remoteSpeech) return;
+    void emit('voicebox-playback-command', {
+      source: 'main-player',
+      sessionId: remoteSpeech.sessionId,
+      command,
+      ...extra,
+    }).catch(() => {});
+  };
 
   return (
     <div
       className="h-screen w-screen flex items-center justify-center px-3"
       style={{ background: 'transparent' }}
     >
-      {effectiveState !== 'hidden' ? (
+      {session.pillState !== 'hidden' ? (
         <CapturePill
-          state={effectiveState}
-          elapsedMs={effectiveElapsed}
+          state={session.pillState}
+          elapsedMs={session.pillElapsedMs}
           errorMessage={session.errorMessage}
           onDismiss={session.dismissError}
           onStop={session.isRecording ? session.stopRecording : undefined}
+        />
+      ) : showRemote && remoteSpeech ? (
+        <SpeechPlayer
+          key={remoteSpeech.sessionId}
+          title={remoteSpeech.title || t('speechPlayer.title')}
+          status={remoteSpeech.status === 'stopped' ? 'ended' : remoteSpeech.status}
+          position={remoteSpeech.currentTime}
+          duration={remoteSpeech.duration}
+          bufferedDuration={remoteSpeech.duration}
+          canSeek={remoteSpeech.canSeek !== false}
+          playbackRate={remoteSpeech.playbackRate ?? 1}
+          canChangeRate={remoteSpeech.canChangeRate === true}
+          onRateChange={(rate) => remoteCommand('rate', { rate })}
+          onToggle={() => remoteCommand(remoteSpeech.status === 'playing' ? 'pause' : 'play')}
+          onSeek={(time) => remoteCommand('seek', { time })}
+          onStop={() => remoteCommand('stop')}
+        />
+      ) : localVisible && speaking ? (
+        <SpeechPlayer
+          key={speaking.generationId}
+          title={t('speechPlayer.title')}
+          status={speaking.status}
+          position={speaking.position}
+          duration={speaking.duration}
+          bufferedDuration={speaking.duration ?? 0}
+          canSeek={speaking.duration !== null}
+          playbackRate={speaking.playbackRate}
+          canChangeRate={true}
+          onRateChange={(rate) => transportRef.current?.setPlaybackRate(rate)}
+          onToggle={() => transportRef.current?.toggle()}
+          onSeek={(position) => transportRef.current?.seek(position)}
+          onStop={() => transportRef.current?.stop()}
         />
       ) : null}
     </div>

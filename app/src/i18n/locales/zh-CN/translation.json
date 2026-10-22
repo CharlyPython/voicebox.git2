@@ -1261,5 +1261,27 @@
       "migrationFailedGeneric": "迁移模型失败",
       "migrationConnectionLost": "迁移期间丢失连接"
     }
+  },
+  "speechPlayer": {
+    "title": "Voicebox 语音",
+    "regionLabel": "Voicebox 语音播放器",
+    "replay": "重新播放语音",
+    "resume": "继续播放语音",
+    "pause": "暂停语音",
+    "stop": "停止语音",
+    "dismiss": "关闭语音播放器",
+    "preparing": "正在准备语音…",
+    "finished": "已完成 · 重新播放或选择播放位置",
+    "paused": "已暂停",
+    "playing": "正在播放",
+    "generatingMore": "正在播放 · 正在生成更多音频",
+    "position": "语音播放位置",
+    "positionValue": "{{position}}，共 {{duration}}",
+    "bufferedPositionValue": "{{position}}，已缓冲 {{duration}}",
+    "speed": "速度",
+    "decreaseSpeed": "降低语音速度",
+    "increaseSpeed": "提高语音速度",
+    "playbackSpeed": "语音播放速度",
+    "speedUnavailable": "此输出不支持调整速度"
   }
 }

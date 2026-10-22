@@ -21,7 +21,7 @@ export const webAudio: PlatformAudio = {
     throw new Error('Native audio device routing is only available in the desktop app.');
   },
 
-  stopPlayback(): void {
+  async stopPlayback(): Promise<void> {
     // No-op for web
   },
 };

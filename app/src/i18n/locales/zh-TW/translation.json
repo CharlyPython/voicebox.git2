@@ -1261,5 +1261,27 @@
       "migrationFailedGeneric": "遷移模型失敗",
       "migrationConnectionLost": "遷移期間連線中斷"
     }
+  },
+  "speechPlayer": {
+    "title": "Voicebox 語音",
+    "regionLabel": "Voicebox 語音播放器",
+    "replay": "重新播放語音",
+    "resume": "繼續播放語音",
+    "pause": "暫停語音",
+    "stop": "停止語音",
+    "dismiss": "關閉語音播放器",
+    "preparing": "正在準備語音…",
+    "finished": "已完成 · 重新播放或選擇播放位置",
+    "paused": "已暫停",
+    "playing": "正在播放",
+    "generatingMore": "正在播放 · 正在產生更多音訊",
+    "position": "語音播放位置",
+    "positionValue": "{{position}}，共 {{duration}}",
+    "bufferedPositionValue": "{{position}}，已緩衝 {{duration}}",
+    "speed": "速度",
+    "decreaseSpeed": "降低語音速度",
+    "increaseSpeed": "提高語音速度",
+    "playbackSpeed": "語音播放速度",
+    "speedUnavailable": "此輸出不支援調整速度"
   }
 }

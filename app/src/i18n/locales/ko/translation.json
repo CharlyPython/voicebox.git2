@@ -1289,5 +1289,27 @@
       "migrationFailedGeneric": "모델 이동에 실패했습니다",
       "migrationConnectionLost": "마이그레이션 중 연결이 끊어졌습니다"
     }
+  },
+  "speechPlayer": {
+    "title": "Voicebox 음성",
+    "regionLabel": "Voicebox 음성 플레이어",
+    "replay": "음성 다시 재생",
+    "resume": "음성 재개",
+    "pause": "음성 일시 정지",
+    "stop": "음성 중지",
+    "dismiss": "음성 플레이어 닫기",
+    "preparing": "음성 준비 중…",
+    "finished": "완료 · 다시 재생하거나 위치 선택",
+    "paused": "일시 정지됨",
+    "playing": "재생 중",
+    "generatingMore": "재생 중 · 추가 오디오 생성 중",
+    "position": "음성 재생 위치",
+    "positionValue": "{{duration}} 중 {{position}}",
+    "bufferedPositionValue": "버퍼링된 {{duration}} 중 {{position}}",
+    "speed": "속도",
+    "decreaseSpeed": "음성 속도 낮추기",
+    "increaseSpeed": "음성 속도 높이기",
+    "playbackSpeed": "음성 재생 속도",
+    "speedUnavailable": "이 출력에서는 속도를 변경할 수 없습니다"
   }
 }

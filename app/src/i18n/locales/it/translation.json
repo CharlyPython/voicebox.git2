@@ -1289,5 +1289,27 @@
       "migrationFailedGeneric": "Impossibile migrare i modelli",
       "migrationConnectionLost": "Connessione interrotta durante la migrazione"
     }
+  },
+  "speechPlayer": {
+    "title": "Voce Voicebox",
+    "regionLabel": "Lettore vocale Voicebox",
+    "replay": "Riproduci di nuovo",
+    "resume": "Riprendi la voce",
+    "pause": "Metti in pausa la voce",
+    "stop": "Interrompi la voce",
+    "dismiss": "Chiudi il lettore vocale",
+    "preparing": "Preparazione della voce…",
+    "finished": "Terminato · riascolta o scegli una posizione",
+    "paused": "In pausa",
+    "playing": "Riproduzione",
+    "generatingMore": "Riproduzione · generazione di altro audio",
+    "position": "Posizione di riproduzione vocale",
+    "positionValue": "{{position}} di {{duration}}",
+    "bufferedPositionValue": "{{position}} di {{duration}} nel buffer",
+    "speed": "Velocità",
+    "decreaseSpeed": "Riduci la velocità della voce",
+    "increaseSpeed": "Aumenta la velocità della voce",
+    "playbackSpeed": "Velocità di riproduzione vocale",
+    "speedUnavailable": "Velocità non disponibile per questa uscita"
   }
 }
